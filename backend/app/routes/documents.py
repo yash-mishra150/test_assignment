@@ -13,7 +13,8 @@ from app.rag import add_documents, summarize
 from app.routes.auth import current_user
 
 router = APIRouter(prefix="/documents", tags=["documents"])
-splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
+# all-minilm has 256-token context limit (~500 chars of typical text)
+splitter = RecursiveCharacterTextSplitter(chunk_size=400, chunk_overlap=50)
 log = logging.getLogger("docqa")
 
 

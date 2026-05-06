@@ -10,7 +10,7 @@ services:
       REDIS_URL: redis://redis:6379
       # Ollama runs on your host machine — no container needed
       OLLAMA_URL: http://host.docker.internal:11434
-      OLLAMA_MODEL: qwen3.5:9b
+      OLLAMA_MODEL: llama3.2
       FAISS_INDEX_PATH: /data/faiss.index
       MEDIA_STORAGE_PATH: /data/media
       JWT_SECRET: ${JWT_SECRET:-change-me-please-use-a-real-secret}
