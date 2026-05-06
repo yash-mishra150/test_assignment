@@ -1,0 +1,17 @@
+fastapi
+pydantic[email]
+pydantic-settings
+uvicorn[standard]
+python-multipart
+aiosqlite
+python-jose[cryptography]
+bcrypt==4.2.1
+PyMuPDF
+faster-whisper
+langchain
+langchain-ollama
+langchain-community
+faiss-cpu
+sse-starlette
+aiofiles
+python-dotenv

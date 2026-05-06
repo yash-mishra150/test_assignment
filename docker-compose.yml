@@ -1,0 +1,54 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      SQLITE_PATH: /data/docqa.db
+      REDIS_URL: redis://redis:6379
+      # Ollama runs on your host machine — no container needed
+      OLLAMA_URL: http://host.docker.internal:11434
+      OLLAMA_MODEL: qwen3.5:9b
+      FAISS_INDEX_PATH: /data/faiss.index
+      MEDIA_STORAGE_PATH: /data/media
+      JWT_SECRET: ${JWT_SECRET:-change-me-please-use-a-real-secret}
+    volumes:
+      - app_data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  app_data:
+  redis_data:

@@ -1,0 +1,11 @@
+services:
+  test:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.test
+    environment:
+      SQLITE_PATH: /tmp/test_docqa.db
+      FAISS_INDEX_PATH: /tmp/test_faiss.index
+      MEDIA_STORAGE_PATH: /tmp/test_media
+      JWT_SECRET: test-secret-key
+    command: pytest --cov=app --cov-report=xml --cov-fail-under=95
