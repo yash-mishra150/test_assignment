@@ -4,18 +4,22 @@ A full-stack web application that lets users upload PDF documents, audio, and vi
 
 ---
 
+## Demo Video
+
+[Watch the demo on Google Drive](https://drive.google.com/file/d/1vWbi-acpRcfOFLDmL3AvUhV8ICZcVpFG/view?usp=sharing)
+
+---
+
 ## Features
 
 | Feature | Detail |
 |---|---|
 | PDF Q&A | Upload PDFs, get AI summaries and ask questions |
 | Audio/Video Q&A | Transcribe media with faster-whisper, extract timestamps |
-| Semantic Search | FAISS vector search using sentence-transformers embeddings |
-| Streaming Chat | Real-time SSE token streaming from Ollama (qwen3.5:9b) |
+| Semantic Search | FAISS vector search using Ollama `all-minilm` embeddings |
+| Streaming Chat | Real-time SSE token streaming from Ollama (`llama3.2`) |
 | Timestamp Playback | Click a source badge in chat → media player seeks to that moment |
 | Multi-user Auth | JWT access + refresh tokens, per-user document isolation |
-| Rate Limiting | 20 requests/min per IP via slowapi + Redis |
-| Response Caching | Redis caches chat answers for 5 minutes |
 
 ---
 
@@ -24,39 +28,38 @@ A full-stack web application that lets users upload PDF documents, audio, and vi
 | Layer | Technology |
 |---|---|
 | Backend | FastAPI (Python 3.13) |
-| LLM | Ollama — `qwen3.5:9b` (runs on your host, not in Docker) |
-| Embeddings | sentence-transformers `all-MiniLM-L6-v2` |
-| Vector Store | FAISS (persisted to volume) |
+| LLM | Ollama — `llama3.2` (runs on your host, not in Docker) |
+| Embeddings | Ollama — `all-minilm` |
+| Vector Store | FAISS (persisted to disk) |
 | Transcription | faster-whisper (CPU, `base` model) |
-| Database | SQLite via aiosqlite (embedded, zero infra) |
-| Rate-limiting | Redis `7-alpine` (~30 MB) via slowapi |
-| Response cache | In-process TTL dict (no Redis dependency) |
+| Database | SQLite via aiosqlite |
 | Frontend | React 18 + TypeScript + TailwindCSS + Vite |
 | Containers | Docker + Docker Compose (3 services) |
 | CI/CD | GitHub Actions |
 
 ---
 
-## Quick Start
+## Quick Start (Docker)
 
 ### Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) and Docker Compose v2
-- [Ollama](https://ollama.com/) installed and running on your machine (not in Docker)
+- [Ollama](https://ollama.com/) installed and running on your machine
 
 ### 1. Clone and configure
 
 ```bash
 git clone <your-repo-url>
-cd docqa
+cd test_assignment
 cp backend/.env.example backend/.env
-# Edit backend/.env — at minimum set a real JWT_SECRET
+# Edit backend/.env — set a real JWT_SECRET
 ```
 
-### 2. Pull the LLM model
+### 2. Pull the required models
 
 ```bash
-ollama pull qwen3.5:9b
+ollama pull llama3.2
+ollama pull all-minilm
 ```
 
 ### 3. Start the stack
@@ -65,13 +68,11 @@ ollama pull qwen3.5:9b
 docker compose up --build
 ```
 
-Services started: **backend**, **frontend**, **redis** (3 total — MongoDB and Ollama not in Docker).
-
 | Service | URL |
 |---|---|
 | Frontend | http://localhost |
 | Backend API | http://localhost:8000 |
-| API Docs | http://localhost:8000/docs |
+| API Docs (Swagger) | http://localhost:8000/docs |
 
 ### 4. First use
 
@@ -110,7 +111,7 @@ Open http://localhost:3000
 
 ## Running Tests
 
-### Backend (requires venv active)
+### Backend
 
 ```bash
 cd backend
@@ -118,7 +119,7 @@ source venv/bin/activate
 pytest
 ```
 
-Coverage report is generated in `backend/htmlcov/index.html`. The suite enforces **≥ 95% coverage** and will fail below that threshold.
+The suite has **56 tests** achieving **96.69% coverage** (enforced minimum: 95%). The HTML coverage report is generated at `backend/htmlcov/index.html`.
 
 ### Frontend
 
@@ -133,7 +134,7 @@ npm test
 
 Full interactive docs at **http://localhost:8000/docs** (Swagger UI).
 
-### Auth endpoints
+### Auth
 
 | Method | Path | Description |
 |---|---|---|
@@ -141,7 +142,7 @@ Full interactive docs at **http://localhost:8000/docs** (Swagger UI).
 | `POST` | `/auth/login` | Login → access + refresh tokens |
 | `POST` | `/auth/refresh` | Rotate tokens |
 
-### Document endpoints
+### Documents
 
 | Method | Path | Description |
 |---|---|---|
@@ -149,7 +150,7 @@ Full interactive docs at **http://localhost:8000/docs** (Swagger UI).
 | `GET` | `/documents/` | List user's documents |
 | `GET` | `/documents/{id}` | Get document metadata + summary |
 
-### Media endpoints
+### Media
 
 | Method | Path | Description |
 |---|---|---|
@@ -157,7 +158,7 @@ Full interactive docs at **http://localhost:8000/docs** (Swagger UI).
 | `GET` | `/media/{id}/transcript` | Get transcript with timestamps |
 | `GET` | `/media/{id}/file` | Stream raw media file |
 
-### Chat endpoint
+### Chat
 
 | Method | Path | Description |
 |---|---|---|
@@ -181,26 +182,27 @@ Full interactive docs at **http://localhost:8000/docs** (Swagger UI).
 ## Project Structure
 
 ```
-docqa/
+test_assignment/
 ├── backend/
 │   ├── app/
-│   │   ├── api/routes/     # auth, documents, media, chat
-│   │   ├── core/           # config, JWT/security
-│   │   ├── db/             # MongoDB client, FAISS store
-│   │   ├── models/         # Pydantic schemas
-│   │   ├── services/       # LLM, embeddings, PDF, transcription, cache
-│   │   └── main.py         # FastAPI app
-│   ├── tests/              # pytest test suite (≥95% coverage)
+│   │   ├── routes/         # auth, documents, media, chat
+│   │   ├── config.py       # settings + env vars
+│   │   ├── database.py     # SQLite + FAISS
+│   │   ├── rag.py          # LangChain RAG pipeline
+│   │   ├── security.py     # JWT helpers
+│   │   └── main.py         # FastAPI app entry point
+│   ├── tests/              # pytest suite (56 tests, ≥95% coverage)
 │   ├── Dockerfile
-│   └── requirements.txt
+│   ├── requirements.txt
+│   └── requirements-dev.txt
 ├── frontend/
 │   ├── src/
 │   │   ├── components/     # FileUpload, ChatInterface, MediaPlayer, etc.
 │   │   ├── hooks/          # useChat, useFileUpload
 │   │   ├── pages/          # Login, Dashboard
-│   │   └── services/api.ts # Axios + SSE client
+│   │   └── services/       # Axios + SSE client
 │   └── Dockerfile
-├── .github/workflows/      # CI (test + coverage) + build (Docker push)
+├── .github/workflows/      # CI (test + coverage) + Docker build
 └── docker-compose.yml
 ```
 
@@ -210,14 +212,11 @@ docqa/
 
 | Variable | Default | Description |
 |---|---|---|
-| `SQLITE_PATH` | `/data/docqa.db` | SQLite database file path |
-| `REDIS_URL` | `redis://redis:6379` | Redis URL (rate-limiting only) |
-| `OLLAMA_URL` | `http://host.docker.internal:11434` | Ollama server URL (host machine) |
-| `OLLAMA_MODEL` | `qwen3.5:9b` | Model name to use |
+| `OLLAMA_URL` | `http://localhost:11434` | Ollama server URL |
+| `LLM_MODEL` | `llama3.2` | Chat model name |
+| `EMBED_MODEL` | `all-minilm` | Embedding model name |
+| `DATA_DIR` | `./data` | Directory for DB, FAISS index, and media files |
 | `JWT_SECRET` | *(required)* | Secret for signing JWTs |
-| `FAISS_INDEX_PATH` | `/data/faiss.index` | Where to persist the FAISS index |
-| `MEDIA_STORAGE_PATH` | `/data/media` | Where to store uploaded media files |
-| `RATE_LIMIT_PER_MINUTE` | `20` | Chat requests per minute per IP |
 
 ---
 
@@ -225,23 +224,8 @@ docqa/
 
 GitHub Actions runs on every push and pull request:
 
-1. **Backend tests** — pytest with ≥95% coverage gate (SQLite in-memory, no external services needed)
+1. **Backend tests** — pytest with ≥95% coverage gate
 2. **Frontend tests** — Vitest + TypeScript type check + production build
 3. **Docker build** — validates both images build successfully
 
 On tagged releases (`v*`), images are pushed to Docker Hub (requires `DOCKER_USERNAME` / `DOCKER_PASSWORD` secrets).
-
----
-
-## Demo Walkthrough
-
-> Record a video walkthrough and add the YouTube/Google Drive link here.
-
-**Suggested walkthrough outline:**
-1. Register → login
-2. Upload a PDF → show summary
-3. Ask a question → show streaming response with page citations
-4. Upload an MP3 → show transcript timestamps
-5. Ask a question about the audio → click timestamp badge → media seeks
-6. Show test coverage report
-7. Show GitHub Actions CI run
